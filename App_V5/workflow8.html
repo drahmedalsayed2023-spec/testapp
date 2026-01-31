@@ -355,6 +355,93 @@
             .points-list { padding-bottom: 20px; }
         }
 
+    
+        /* ===== Mobile rotate & landscape layout (PWA UX patch) ===== */
+        .rotate-overlay{
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.88);
+            color: #fff;
+            z-index: 999999;
+            padding: 24px;
+            text-align: center;
+        }
+        .rotate-overlay .rotate-card{
+            max-width: 420px;
+            width: 100%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 18px;
+            padding: 22px 18px;
+            backdrop-filter: blur(8px);
+        }
+        .rotate-overlay .rotate-icon{
+            font-size: 44px;
+            margin-bottom: 10px;
+        }
+        .rotate-overlay h2{
+            margin: 0 0 8px 0;
+            font-size: 20px;
+            line-height: 1.25;
+        }
+        .rotate-overlay p{
+            margin: 0;
+            opacity: 0.9;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Force rotate on phones when portrait */
+        @media (max-width: 900px) and (orientation: portrait){
+            .rotate-overlay{ display: flex; }
+            body{ overflow: hidden; }
+        }
+
+        /* Improve landscape on mobile: keep sidebar next to content */
+        @media (max-width: 900px) and (orientation: landscape){
+            .app-container{
+                flex-direction: row !important;
+                height: 100vh;
+                min-height: 100vh;
+                width: 100%;
+                max-width: 100%;
+            }
+            .sidebar{
+                width: 280px !important;
+                height: 100vh !important;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .main-content, .content, .main{
+                height: 100vh;
+                overflow: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Sidebar buttons as 2-column grid to avoid long scrolling */
+            .sidebar-controls{
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                align-items: stretch;
+            }
+            .sidebar-controls .btn,
+            .sidebar-controls button{
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Hide sub-headings to save space */
+            .sidebar-subtitle,
+            .subheading,
+            .section-subtitle{
+                display: none !important;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -747,34 +834,84 @@ function handleFile(e) {
     reader.readAsDataURL(e.target.files[0]);
 }
 
-function rrzAutoLoadFromPhoto(){
+async function rrzTryLoadFromIndexedDB(slot){
     try{
-        const qs = new URLSearchParams(location.search);
-        const from = qs.get('from') || '';
-        const slot = qs.get('slot') || '';
-        if(!(from === 'photo' || slot)) return;
-
-        const keys = [`rrz_${slot}_image`, `rrz_${slot}_image_dataurl`, 'rrz_uploaded_image', 'uploadedImageDataUrl'];
-        let dataUrl = null;
-        for(const k of keys){
-            try{
-                const v = sessionStorage.getItem(k);
-                if(v && typeof v === 'string' && v.startsWith('data:image')){ dataUrl = v; break; }
-            }catch(e){}
-        }
-
-        if(dataUrl){
-            const img = new Image();
-            img.onload = () => {
-                state.img = img;
-                init();
-                fitImageToScreen();
-                document.getElementById('upload-overlay').style.display = 'none';
+        if(!slot) return null;
+        const DB_NAME = "rrz_clinical_photos_db";
+        const DB_STORE = "images";
+        const DB_VER = 1;
+        const open = ()=> new Promise((resolve,reject)=>{
+            const req = indexedDB.open(DB_NAME, DB_VER);
+            req.onsuccess = ()=> resolve(req.result);
+            req.onerror = ()=> reject(req.error || new Error("IDB open failed"));
+            req.onupgradeneeded = ()=> { /* store is created by photo.html */ };
+        });
+        const db = await open();
+        return await new Promise((resolve,reject)=>{
+            const tx = db.transaction(DB_STORE, "readonly");
+            const req = tx.objectStore(DB_STORE).get(slot);
+            req.onsuccess = ()=> {
+                const rec = req.result;
+                if(rec && rec.blob){
+                    try{
+                        const url = URL.createObjectURL(rec.blob);
+                        resolve(url);
+                    }catch(e){ resolve(null); }
+                }else{
+                    resolve(null);
+                }
             };
-            img.src = dataUrl;
-        }
-    }catch(e){}
+            req.onerror = ()=> resolve(null);
+        });
+    }catch(e){
+        return null;
+    }
 }
+
+function rrzAutoLoadFromPhoto(){
+    (async ()=>{
+        try{
+            const qs = new URLSearchParams(location.search);
+            const from = qs.get('from') || '';
+            const slot = qs.get('slot') || '';
+            const autocal = qs.get('autocal') || '';
+            if(!(from === 'photo' || slot)) return;
+
+            const keys = [`rrz_${slot}_image`, `rrz_${slot}_image_dataurl`, 'rrz_uploaded_image', 'uploadedImageDataUrl', 'selectedImageDataUrl'];
+            let src = null;
+
+            // 1) sessionStorage dataURL (fast path)
+            for(const k of keys){
+                try{
+                    const v = sessionStorage.getItem(k);
+                    if(v && typeof v === 'string' && (v.startsWith('data:image') || v.startsWith('blob:'))){ src = v; break; }
+                }catch(e){}
+            }
+
+            // 2) IndexedDB fallback (avoids sessionStorage quota issues)
+            if(!src && typeof indexedDB !== 'undefined' && slot){
+                src = await rrzTryLoadFromIndexedDB(slot);
+            }
+
+            if(src){
+                const img = new Image();
+                img.onload = () => {
+                    try{
+                        state.img = img;
+                        init();
+                        fitImageToScreen();
+                        const ov = document.getElementById('upload-overlay');
+                        if(ov) ov.style.display = 'none';
+                        if(autocal==='1'){
+                            setTimeout(()=>{ try{ openCalibrationSettings(true); }catch(e){} }, 120);
+                        }
+                    }catch(e){}
+                };
+                img.src = src;
+            }
+        }catch(e){}
+    })();
+}    
 
 function fitImageToScreen() {
     if(!state.img) return;
