@@ -1541,6 +1541,43 @@ body.rrz-portrait-lock .app-container{ display:none !important; }
 
     </style>
     <!-- Font Awesome removed for offline-first PWA; optional: bundle locally if you need icons -->
+<style id="rrz-desktop-scroll-fix">
+/* === RRZ Desktop/Laptop Scroll-Pan Fix (UI only) ===
+   Goal: enable vertical scrolling on PC/Laptop where previous rules forced overflow:hidden.
+   Does NOT touch any JS logic, functions, or calculations.
+*/
+@media (min-width: 1025px){
+  html, body{
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    overscroll-behavior: auto !important;
+  }
+  /* Let the page grow so the browser scrollbar appears */
+  .app-container,
+  .analysis-container,
+  .main-content,
+  .content-area,
+  .analysis-panel,
+  .report-section,
+  .notes-section{
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+  /* If a workflow uses a full-height flex shell, allow it to expand */
+  .analysis-container{ align-items: stretch !important; }
+}
+
+/* Large tablets / small laptops */
+@media (min-width: 768px) and (max-width: 1024px){
+  html, body{
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+}
+</style>
 </head>
 <body>
 
@@ -3170,7 +3207,97 @@ function getCanvasPointerPos(evt) {
                             .no-print { display: none; }
                             body { padding: 0; }
                         }
-                    </style>
+                    
+
+/* === RRZ_SCROLL_PAN_FIX_V1.10 === */
+/* UI-only patch: enables scroll-pan on mobile landscape + PC, avoids cropped UI, enlarges landmarks list. */
+html, body{
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+body{ -webkit-overflow-scrolling: touch; }
+
+/* Keep portrait rotate overlays effective */
+@media (max-width: 900px) and (orientation: portrait){
+  html, body{ overflow: hidden !important; }
+}
+
+.app-container{
+  height: auto !important;
+  min-height: 100vh !important;
+}
+
+/* Sidebar: make list area large and keep buttons reachable */
+.sidebar{
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+}
+.points-section{
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: auto !important;
+}
+
+/* Works for workflows (select list) + (ul list) */
+.points-wheel,
+.points-list{
+  flex: 1 1 auto !important;
+  min-height: 300px !important;
+  height: auto !important;
+  overflow: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Main layout: remove hard 100vh clipping so Notes/Report can be reached by scroll */
+.main-content,
+.analysis-container,
+.content,
+.main{
+  height: auto !important;
+  min-height: 100vh !important;
+  overflow: visible !important;
+}
+
+/* Right panels (workflow 8/9 + some others) */
+.analysis-panel,
+.results-panel,
+.right-panel,
+.analysis-section,
+.user-notes-panel{
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  position: static !important;
+}
+
+/* Mobile landscape: tighten buttons so they aren't cropped */
+@media (max-width: 900px) and (orientation: landscape){
+  .sidebar-controls{
+    padding: 12px !important;
+    gap: 10px !important;
+  }
+  .sidebar-controls .btn,
+  .sidebar-controls button{
+    padding: 12px !important;
+    font-size: 12px !important;
+    border-radius: 10px !important;
+  }
+  .points-wheel,
+  .points-list{
+    min-height: 220px !important;
+  }
+}
+
+/* Desktop/PC: always allow scroll (even if inner sections had fixed heights) */
+@media (min-width: 901px){
+  .main-content{ overflow: visible !important; }
+}
+</style>
                 </head>
                 <body>
                     <div class="header">
