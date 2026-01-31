@@ -421,6 +421,21 @@
       .annotatorRoot .a-sidebar{ height: calc(100vh - 32px); }
       .annotatorRoot .a-stageWrap, .annotatorRoot .gridStage{ height: calc(100vh - 180px); }
     }
+
+    /* ========= RRZ Landscape Gate (Annotator / Photo Grid) ========= */
+    #rotateOverlay{
+      position: fixed;
+      inset: 0;
+      z-index: 1000000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(0,0,0,.85);
+      backdrop-filter: blur(10px);
+    }
+    #rotateOverlay.show{ display: flex; }
+
 </style>
   <script src="shared/aiClient.js" defer></script>
 </head>
@@ -433,7 +448,26 @@
     <button class="uBtn" id="btnGRID">Photo Grid</button>
   </div>
 
-  <!-- ========= Section 1: Royal Ray Zone ========= -->
+  
+  <!-- Rotate Device Overlay (shown only when needed) -->
+  <div id="rotateOverlay" aria-hidden="true">
+    <div style="max-width:520px;width:100%;background:rgba(30,41,59,.95);border:1px solid rgba(59,130,246,.35);border-radius:24px;padding:24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.45);">
+      <div style="font-size:56px;line-height:1;">🔄</div>
+      <h2 style="font-size:22px;font-weight:900;margin-top:10px;">Rotate your device</h2>
+      <p style="margin-top:8px;color:rgba(255,255,255,.82);font-weight:800;line-height:1.6;">
+        للدخول إلى <b>Annotator</b> أو <b>Photo Grid</b> برجاء تدوير الهاتف إلى وضع <b>Landscape</b>.
+      </p>
+      <div style="margin-top:14px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <button id="rotateTryBtn" class="uBtn" style="background:rgba(59,130,246,.25);border:1px solid rgba(59,130,246,.45);">Try Auto Rotate</button>
+        <button id="rotateCancelBtn" class="uBtn">Cancel</button>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.55);font-weight:800;">
+        (لو جهازك لا يدعم التدوير التلقائي، فقط قم بتدوير الهاتف يدويًا)
+      </div>
+    </div>
+  </div>
+
+<!-- ========= Section 1: Royal Ray Zone ========= -->
   <div id="rrzSection" class="u-section active">
     <div id="rrzApp" class="max-w-5xl mx-auto"></div>
   </div>
@@ -622,9 +656,74 @@
         }
       };
 
+      
+      /* ===== Landscape Gate: force landscape for Annotator / Photo Grid on mobile ===== */
+      const rotateOverlay   = document.getElementById('rotateOverlay');
+      const rotateTryBtn    = document.getElementById('rotateTryBtn');
+      const rotateCancelBtn = document.getElementById('rotateCancelBtn');
+      let _pendingTarget = null;
+
+      const _isMobileLike = () => window.matchMedia('(max-width: 900px)').matches;
+      const _isPortrait   = () => window.matchMedia('(orientation: portrait)').matches;
+
+      const _showRotateOverlay = (show) => {
+        if(!rotateOverlay) return;
+        rotateOverlay.classList.toggle('show', !!show);
+        rotateOverlay.setAttribute('aria-hidden', show ? 'false' : 'true');
+      };
+
+      const _tryLockLandscape = async () => {
+        try{
+          if(screen.orientation && screen.orientation.lock){
+            await screen.orientation.lock('landscape');
+            return true;
+          }
+        }catch(e){}
+        return false;
+      };
+
+      const _maybeComplete = () => {
+        if(!_pendingTarget) return;
+        if(!_isMobileLike() || !_isPortrait()){
+          const t = _pendingTarget;
+          _pendingTarget = null;
+          _showRotateOverlay(false);
+          window.U_SHOW(t);
+        }else{
+          _showRotateOverlay(true);
+        }
+      };
+
+      window.RRZ_REQUEST_LANDSCAPE = async (target) => {
+        // Desktop/tablet landscape: normal
+        if(!_isMobileLike() || !_isPortrait()){
+          window.U_SHOW(target);
+          return;
+        }
+        _pendingTarget = target;
+        _showRotateOverlay(true);
+        await _tryLockLandscape(); // may fail on some browsers (esp. iOS); user can rotate manually
+        setTimeout(_maybeComplete, 300);
+      };
+
+      window.addEventListener('orientationchange', () => setTimeout(_maybeComplete, 250));
+      window.addEventListener('resize',            () => setTimeout(_maybeComplete, 250));
+
+      if(rotateTryBtn){
+        rotateTryBtn.addEventListener('click', async () => {
+          if(_pendingTarget) await window.RRZ_REQUEST_LANDSCAPE(_pendingTarget);
+        });
+      }
+      if(rotateCancelBtn){
+        rotateCancelBtn.addEventListener('click', () => {
+          _pendingTarget = null;
+          _showRotateOverlay(false);
+        });
+      }
+
       btnRRZ.onclick  = () => window.U_SHOW('rrz');
-      btnANN.onclick  = () => window.U_SHOW('ann');
-      btnGRID.onclick = () => window.U_SHOW('grid');
+      btnANN.onclick  = () => window.RRZ_REQUEST_LANDSCAPE ? window.RRZ_REQUEST_LANDSCAPE('ann') : window.U_SHOW('ann');
+      btnGRID.onclick = () => window.RRZ_REQUEST_LANDSCAPE ? window.RRZ_REQUEST_LANDSCAPE('grid') : window.U_SHOW('grid');
     })();
 
     /* =========================================================
