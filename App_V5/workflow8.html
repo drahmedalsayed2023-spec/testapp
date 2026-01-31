@@ -400,16 +400,86 @@
             body{ overflow: hidden; }
         }
 
-        /* Improve landscape on mobile: keep sidebar next to content */
-        @media (max-width: 900px) and (orientation: landscape){
-            .app-container{
-                flex-direction: row !important;
-                height: 100vh;
-                min-height: 100vh;
-                width: 100%;
-                max-width: 100%;
-            }
-            .sidebar{
+        /* Improve landscape on mobile: keep sidebar next to content + allow scroll */
+@media (max-width: 900px) and (orientation: landscape){
+    html, body{
+        height: auto !important;
+        min-height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+    body{ -webkit-overflow-scrolling: touch; }
+
+    /* Use grid so sidebar stays left and (canvas + report) become vertically scrollable */
+    .app-container{
+        display: grid !important;
+        grid-template-columns: 240px 1fr;
+        grid-template-rows: auto auto;
+        height: auto !important;
+        min-height: 100vh !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .sidebar{
+        grid-column: 1;
+        grid-row: 1 / span 2;
+        width: 240px !important;
+        position: sticky !important;
+        top: 0;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .main-content{
+        grid-column: 2;
+        grid-row: 1;
+        height: auto !important;
+        overflow: visible !important;
+        min-height: 60vh;
+    }
+
+    .canvas-container{
+        overflow: auto !important;
+        -webkit-overflow-scrolling: touch;
+        min-height: 50vh;
+    }
+
+    .analysis-panel, .analysis-section, .right-panel, .results-panel{
+        grid-column: 2;
+        grid-row: 2;
+        width: auto !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border-left: none !important;
+        border-top: 1px solid rgba(0,0,0,0.10) !important;
+    }
+
+    /* Sidebar buttons: 2-column grid */
+    .sidebar-controls{
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        align-items: stretch;
+    }
+    .sidebar-controls .btn,
+    .sidebar-controls button{
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Hide sub-headings to save space */
+    .sidebar-subtitle,
+    .subheading,
+    .section-subtitle{
+        display: none !important;
+    }
+}
+
+.sidebar{
                 width: 280px !important;
                 height: 100vh !important;
                 overflow-y: auto;
