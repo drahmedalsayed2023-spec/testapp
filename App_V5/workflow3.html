@@ -1411,16 +1411,102 @@ body.rrz-portrait-lock .app-container{ display:none !important; }
             body{ overflow: hidden; }
         }
 
-        /* Improve landscape on mobile: keep sidebar next to content */
-        @media (max-width: 900px) and (orientation: landscape){
-            .app-container{
-                flex-direction: row !important;
-                height: 100vh;
-                min-height: 100vh;
-                width: 100%;
-                max-width: 100%;
-            }
-            .sidebar{
+        /* Improve landscape on mobile: keep sidebar next to content + allow scroll */
+@media (max-width: 900px) and (orientation: landscape){
+    html, body{
+        height: auto !important;
+        min-height: 100% !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+    }
+    body{ -webkit-overflow-scrolling: touch; }
+
+    .app-container{
+        flex-direction: row !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        align-items: stretch !important;
+    }
+
+    .sidebar{
+        width: 250px !important;
+        position: sticky !important;
+        top: 0;
+        height: 100vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .main-content{
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow: visible !important;
+    }
+
+    /* Prevent clipping in nested containers */
+    .analysis-container, .content, .main, .canvas-wrap, .viewer, .workspace{
+        height: auto !important;
+        overflow: visible !important;
+        min-height: 0 !important;
+    }
+
+    /* Stack result/notes panels under the image on phones to avoid covering/cropping */
+    .analysis-container{
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .analysis-section, .results-panel, .right-panel, .analysis-panel{
+        width: 100% !important;
+        max-width: none !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border-left: none !important;
+        border-top: 1px solid rgba(0,0,0,0.08) !important;
+    }
+
+    .image-section{
+        padding: 12px !important;
+    }
+
+    .canvas-container{
+        max-width: 100% !important;
+        overflow: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Sidebar buttons: 2-column grid */
+    .sidebar-controls{
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        align-items: stretch;
+    }
+    .sidebar-controls .btn,
+    .sidebar-controls button{
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Hide sub-headings to save space */
+    .sidebar-subtitle,
+    .subheading,
+    .section-subtitle{
+        display: none !important;
+    }
+
+    /* Notes panel should behave like normal flow (no overlay) */
+    .user-notes-panel{
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
+.sidebar{
                 width: 280px !important;
                 height: 100vh !important;
                 overflow-y: auto;
